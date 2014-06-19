@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- Website template by freewebsitetemplates.com -->
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<title>Programming</title>
+	<link rel="stylesheet" type="text/css" href="css/style.css">
+	<script type="text/javascript"
+   		src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+	<div id="header">
+		<h1><a href="programming.html" id="sitetitle">Programming</a></h1>
+		<ul>
+			<li class="current">
+				<a href="index.html">Home</a>
+			</li>
+			<li class="current">
+				<a href="publications.html">Publications</a>
+			</li>
+			<li class="current">
+				<a href="research.html">Research</a>
+			</li>
+			<li class="current">
+				<a href="teaching.html">Teaching</a>
+			</li>
+		</ul>
+	</div>
+	<p>
+		<h1>A few useful tricks I learned</h1>
+
+		<h2>1. Writing Makefiles for multiple machines</h2>
+
+		It happens a lot of times that one develops code locally, for example on a laptop computer, and may want to run the same code at some remote location. For example you may want to test Gadget on your laptop, running a small simulation with only \(32^3\) particles, but in order to run a realistic simulation with \(512^3\) particles (which requires 128GB of RAM) you need to export the code on some remote, and more capable, computer cluster. There are all sorts of trouble when you do this, and the main one is that the paths to the compilers and libraries you want to link to your code will be all different. Including all these differences in the same Makefile can be a pain, and so I often adopt this strategy: I create four different Makefiles, called "Makefile", "Makefile.main", "Makefile.mylaptop" and "Makefile.cluster" respectively. These have the following structures
+
+<!-- HTML generated using hilite.me -->
+
+	<pre style="margin: 0; line-height: 125%"><span style="color: #888888"><br>		######Makefile.main#############</span>
+		<span style="color: #888888">######This contains all the dependencies, for example###########</span>
+		<span style="color: #0066BB; font-weight: bold">executable</span><span style="color: #333333">:</span> <span style="color: #6600EE; font-weight: bold">executable.o</span>
+		<span style="color: #008800; font-weight: bold">$(</span>CXX<span style="color: #008800; font-weight: bold">)</span> executable.o -o executable <span style="color: #008800; font-weight: bold">$(</span>LINK<span style="color: #008800; font-weight: bold">)</span>
+		<span style="color: #0066BB; font-weight: bold">executable.o</span><span style="color: #333333">:</span> <span style="color: #6600EE; font-weight: bold">executable.cpp</span>
+		<span style="color: #008800; font-weight: bold">$(</span>CXX<span style="color: #008800; font-weight: bold">)</span> -c executable.cpp -o executable.o <span style="color: #008800; font-weight: bold">$(</span>INCLUDES<span style="color: #008800; font-weight: bold">)</span>
+
+		<span style="color: #888888">######This needs to be set only once! It's machine independent!###########</span>
+
+
+		<span style="color: #888888">#######Makefile.mylaptop###########</span>
+
+		<span style="color: #888888">#######This contains the paths to the local compilers, for example#########</span>
+		<span style="color: #996633">CXX</span> <span style="color: #333333">=</span> clang++
+		<span style="color: #996633">INCLUDES</span> <span style="color: #333333">=</span> -I/usr/local
+		<span style="color: #996633">LINK</span> <span style="color: #333333">=</span> -L/usr/local -lfftw3
+
+		<span style="color: #888888">#######Makefile.cluster###########</span>
+
+		<span style="color: #888888">#######This contains the paths to the remote compilers, for example#########</span>
+		<span style="color: #996633">CXX</span> <span style="color: #333333">=</span> /path/to/c++/compiler/g++
+		<span style="color: #996633">INCLUDES</span> <span style="color: #333333">=</span> -I/path/to/fftw_library/include
+		<span style="color: #996633">LINK</span> <span style="color: #333333">=</span> -L/path/to/fftw_library/lib -lfftw3
+
+		<span style="color: #888888">#######Makefile###########</span>
+
+		<span style="color: #888888">#######This contains only three lines, and that&#39;s the file that &quot;make&quot; will read!############</span>
+		<span style="color: #996633">me</span> <span style="color: #333333">=</span> <span style="color: #008800; font-weight: bold">${</span><span style="color: #996633">THIS</span><span style="color: #008800; font-weight: bold">}</span>
+		<span style="color: #557799">include Makefile.$(me)</span>
+		<span style="color: #557799">include Makefile.main</span>
+
+	</pre>
+
+
+		All that you have to do is set an environment variable called THIS in your laptop and on the cluster; THIS will have the value "mylaptop" on the local machine, and "cluster" on the remote machine. This will ensure that "make" selects the correct compiler paths in a machine independent way  
+
+		<h2>2. Linking C++ dependent libraries to C code</h2>
+
+		Have you ever been stuck with the problem of having to link a C++ library to your C code? The opposite is very easy to do (just prepend "extern "C" " to all the C functions you need to include in your C++ code), but that's not the point we're talking about here. I had to solve this problem when I needed to link some openCV libraries to do some image processing on galaxy images; too bad that the latest version of openCV is written in C++, and my original analysis code was straight C... how to solve this problem? That's how I did it: the first thing to do is wrap your C++ function call in a C compatible interface; by "C compatible" I mean that this interface must not include any C++ classes (with defined methods in them), but only C types. Suppose that this wrapper function is contained in a file called "myfunc.cpp"
+
+		<!-- HTML generated using hilite.me -->
+		<pre style="margin: 0; line-height: 125%"><span style="color: #888888">
+
+			////////////*myfunc.h*////////////////</span>
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>ifndef __MYFUNC_H
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>define __MYFUNC_H
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>ifdef _MYFUNC_IS_CPP
+			<span style="color: #008800; font-weight: bold">extern</span> <span style="background-color: #fff0f0">&quot;C&quot;</span> <span style="color: #333399; font-weight: bold">void</span> myfunction(<span style="color: #333399; font-weight: bold">int</span> x, .....);
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span><span style="color: #008800; font-weight: bold">else</span>
+			<span style="color: #333399; font-weight: bold">void</span> myfunction(<span style="color: #333399; font-weight: bold">int</span> x, .....);
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>endif
+
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>endif
+
+			<span style="color: #888888">/////////////*myfunc.cpp*///////////////</span>
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>define _MYFUNC_IS_CPP
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>include <span style="background-color: #fff0f0">&quot;myfunc.h&quot;</span>
+
+			<span style="color: #008800; font-weight: bold">extern</span> <span style="background-color: #fff0f0">&quot;C&quot;</span> <span style="color: #333399; font-weight: bold">void</span> myfunction(<span style="color: #333399; font-weight: bold">int</span> x,...){
+				<span style="color: #888888">//Function body, can have C++ library calls (e.g. openCV) etc...</span>
+			}
+
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>undef _MYFUNC_IS_CPP
+		</pre>
+
+
+		You compile this code with your favourite compiler, and, why not, put it in a library:
+
+		<pre><code>
+			clang++ -c -g -Wall myfunc.cpp -o myfunc.o -I/path/to/opencv/include -I/path/to/myfunc
+			ar libmyfunc.a myfunc.o
+			ranlib libmyfunc.a
+		</code></pre>
+
+		Now the issue is how to link this wrapper library to a C code: suppose that you have a C driver that makes use of myfunction, say something like this
+
+		<!-- HTML generated using hilite.me -->
+		<pre style="margin: 0; line-height: 125%"><span style="color: #888888">
+
+			///////////*driver.c*///////////////////</span>
+			<span style="color: #FF0000; background-color: #FFAAAA">#</span>include <span style="background-color: #fff0f0">&quot;myfunc.h&quot;</span>
+
+			<span style="color: #333399; font-weight: bold">int</span> main(){
+
+				<span style="color: #333399; font-weight: bold">int</span> x;
+				......
+
+				myfunction(x,....);
+
+				<span style="color: #008800; font-weight: bold">return</span> <span style="color: #0000DD; font-weight: bold">0</span>;
+
+			}
+		</pre>
+
+
+
+		How do you compile and link it properly? Since this code is (almost) straight C, you can do the following. To compile:
+
+		<pre><code>
+			clang -c -g -Wall driver.c -o driver.o -I/path/to/myfunc
+		</code></pre>
+
+		At linking stage you need to specify the original C++ library you wanted to link to (e.g. openCV), as well as the standard C++ library, libstdc++
+
+		<pre><code>
+			clang -g driver.o -o driver -L/path/to/myfunc -lmyfunc -L/path/to/opencv/lib -lopencv_core -lstdc++
+		</code></pre>
+
+		And you are done!!
+
+		<h2>3. Using python as glue code to parse ini option files</h2>
+
+		Under construction...
+		
+	</p>
+</body>
+</html>
