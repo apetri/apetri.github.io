@@ -253,13 +253,14 @@ p a:hover,
 }
 #body div#home div.sidebar div ul,
 #body div#contact div.sidebar div ul {
-	list-style: none;
+	list-style: disc;
 	margin: 0;
-	padding: 0;
+	padding: 0.2em;
 }
 #body div#home div.sidebar div ul li,
 #body div#contact div.sidebar div ul li {
-	margin: 0 0 35px;
+	margin: 0;
+	padding: 0;
 }
 #body div#home div.sidebar div ul li p span,
 #body div#contact div.sidebar div ul li p span {
