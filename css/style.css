@@ -2,9 +2,10 @@
 body {
 	background: #e8e8e8 url(../images/bg-body.png) repeat-x;
 	color: #636466;
-	font-family: "Times New Roman", Times, serif;
+	font-family: 'Open Sans', sans-serif;
 	font-size: 14px;
 	letter-spacing: 0.05em;
+	/*line-height: 1.25em;*/
 	margin: 0;
 	min-width: 960px;
 	padding: 0;
