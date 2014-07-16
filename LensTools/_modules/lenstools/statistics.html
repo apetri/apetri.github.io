@@ -1,0 +1,331 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lenstools.statistics &mdash; LensTools 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="LensTools 0.2 documentation" href="../../index.html" />
+    <link rel="up" title="lenstools" href="../lenstools.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" accesskey="U">lenstools</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lenstools.statistics</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">.. module:: statistics </span>
+<span class="sd">	:platform: Unix</span>
+<span class="sd">	:synopsis: This module implements a set of statistical operations on ensembles of weak lensing maps (shear/convergence)</span>
+
+
+<span class="sd">.. moduleauthor:: Andrea Petri &lt;apetri@phys.columbia.edu&gt;</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+
+<span class="kn">from</span> <span class="nn">topology</span> <span class="kn">import</span> <span class="n">ConvergenceMap</span>
+<span class="kn">from</span> <span class="nn">shear</span> <span class="kn">import</span> <span class="n">ShearMap</span>
+<span class="kn">from</span> <span class="nn">lenstools.index</span> <span class="kn">import</span> <span class="n">Indexer</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c">##########################################</span>
+<span class="c">########Ensemble class####################</span>
+<span class="c">##########################################</span>
+
+<div class="viewcode-block" id="Ensemble"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble">[docs]</a><span class="k">class</span> <span class="nc">Ensemble</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A class that handles statistical operations on weak lensing maps; an ensemble is a collection of different statistical realization of the same random variable. This class has an attribute &#39;data&#39; that is a numpy array which first axis corresponds to the realization number.</span>
+
+<span class="sd">	&gt;&gt;&gt; from lenstools.statistics import Ensemble</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">file_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">num_realizations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">metric</span><span class="o">=</span><span class="s">&quot;chi2&quot;</span><span class="p">):</span>
+		
+		<span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">=</span> <span class="n">file_list</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span> <span class="o">=</span> <span class="n">num_realizations</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">=</span> <span class="n">metric</span>
+
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Ensemble.fromfilelist"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.fromfilelist">[docs]</a>	<span class="k">def</span> <span class="nf">fromfilelist</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">file_list</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Builds the ensemble from a file list: each file corresponds to a different realization</span>
+
+<span class="sd">		:param file_list: List of files on which to define the ensemble</span>
+<span class="sd">		:type file_list: list of str.</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c">#See how many realizations are there in the ensemble</span>
+		<span class="n">num_realizations</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="n">num_realizations</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;There are no realizations in your ensemble!!&quot;</span>
+
+		<span class="c">#Build the ensemble instance and return it</span>
+		<span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="n">file_list</span><span class="p">,</span><span class="n">num_realizations</span><span class="o">=</span><span class="n">num_realizations</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Ensemble.load"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.load">[docs]</a>	<span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">callback_loader</span><span class="p">,</span><span class="n">pool</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Loads the ensemble into memory, can spread the calculations on multiple processors using a MPI pool</span>
+
+<span class="sd">		:param callback_loader: This function gets executed on each of the files in the list and populates the ensemble; must take in a dictionary as its only parameter and must return a numpy array</span>
+<span class="sd">		:type callback_loader: function, must take in a file name (str.) and return a numpy array with the loaded data</span>
+
+<span class="sd">		:param pool: MPI pool for multiprocessing (imported from emcee https://github.com/dfm/emcee)</span>
+<span class="sd">		:type pool: MPI pool object</span>
+
+<span class="sd">		:param kwargs: Any additional keyword arguments to be passed to callback_loader</span>
+<span class="sd">		:type kwargs: Keyword arguments</span>
+
+<span class="sd">		&gt;&gt;&gt; from lenstools import Ensemble</span>
+<span class="sd">		&gt;&gt;&gt; from lenstools.statistics import default_callback_loader</span>
+
+<span class="sd">		&gt;&gt;&gt; map_list = [&quot;conv1.fit&quot;,&quot;conv2.fit&quot;,&quot;conv3.fit&quot;]</span>
+<span class="sd">		&gt;&gt;&gt; l_edges = np.arange(200.0,50000.0,200.0)</span>
+
+<span class="sd">		&gt;&gt;&gt; conv_ensemble = Ensemble.fromfilelist(map_list)</span>
+<span class="sd">		&gt;&gt;&gt; conv_ensemble.load(callback_loader=default_callback_loader,pool=pool,l_edges=l_edges)</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">assert</span> <span class="n">callback_loader</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">pool</span> <span class="o">=</span> <span class="n">pool</span>
+
+		<span class="c">#Build list with tasks to execute (dirty, maybe optimize in the future?)</span>
+		<span class="n">tasks</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+		<span class="k">for</span> <span class="n">file_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span><span class="p">:</span>
+			<span class="n">task</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+			<span class="n">task</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s">&quot;file_name&quot;</span><span class="p">:</span><span class="n">file_name</span><span class="p">})</span>
+			<span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+		<span class="c">#Execute the callback on each file in the list (spread calculations with MPI pool if it is not none)</span>
+		<span class="k">if</span> <span class="n">pool</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="n">M</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">M</span> <span class="o">=</span> <span class="nb">map</span>
+
+		<span class="n">full_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">M</span><span class="p">(</span><span class="n">callback_loader</span><span class="p">,</span><span class="n">tasks</span><span class="p">))</span>
+		
+		<span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+		<span class="k">assert</span> <span class="n">full_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">full_data</span>
+
+	</div>
+<div class="viewcode-block" id="Ensemble.mean"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.mean">[docs]</a>	<span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Computes the ensemble average over realizations </span>
+
+<span class="sd">		:returns: ndarray with the averages, has the same shape as self.data[0]</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&quot;_mean&quot;</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+		
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mean</span>
+</div>
+<div class="viewcode-block" id="Ensemble.covariance"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.covariance">[docs]</a>	<span class="k">def</span> <span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Computes the ensemble covariance matrix</span>
+
+<span class="sd">		:returns: ndarray with the covariance matrix, has shape (self.data[0],self.data[0]) </span>
+
+<span class="sd">		&quot;&quot;&quot;</span> 
+
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;I can&#39;t compute a covariance matrix with one realization only!!&quot;</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">,</span> <span class="s">&quot;This operation is unsafe with non float numbers!!&quot;</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&quot;_mean&quot;</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+		<span class="n">subtracted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mean</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:]</span>
+		<span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">subtracted</span><span class="o">.</span><span class="n">transpose</span><span class="p">(),</span><span class="n">subtracted</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Ensemble.compare"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.compare">[docs]</a>	<span class="k">def</span> <span class="nf">compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">rhs</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		A comparison operation between ensembles: computes a chi2-style difference between two different ensembles to assert how different they are</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span><span class="n">Ensemble</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">.</span><span class="n">metric</span><span class="p">,</span><span class="s">&quot;The two ensemble instances must have the same metric!!&quot;</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="o">==</span><span class="s">&quot;chi2&quot;</span><span class="p">:</span>
+
+			<span class="n">mean1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+			<span class="n">covariance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">()</span>
+			<span class="n">mean2</span> <span class="o">=</span> <span class="n">rhs</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+			<span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mean1</span> <span class="o">-</span> <span class="n">mean2</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">covariance</span><span class="p">),</span><span class="n">mean1</span> <span class="o">-</span> <span class="n">mean2</span><span class="p">))</span>
+
+		<span class="k">else</span><span class="p">:</span>
+
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Only chi2 metric implemented so far!!&quot;</span><span class="p">)</span>
+
+	</div>
+	<span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">rhs</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Overload of the sum operator: a sum between ensembles is another ensemble whose data are vstacked. This operation is useful if you have two ensembles with different, independent realizations and you want to create an ensemble which is the union of the two. The data must be vstackable</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c">#Safety checks</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span><span class="n">Ensemble</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">.</span><span class="n">metric</span><span class="p">,</span><span class="s">&quot;The two ensemble instances must have the same metric!!&quot;</span>
+
+		<span class="k">try</span><span class="p">:</span>
+			
+			<span class="n">new_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span><span class="n">rhs</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+		
+		<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+			
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;The data of these two ensembles cannot be vstacked!&quot;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">return</span> <span class="n">Ensemble</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list</span><span class="o">+</span><span class="n">rhs</span><span class="o">.</span><span class="n">file_list</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="n">new_data</span><span class="p">,</span><span class="n">num_realizations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span><span class="o">+</span><span class="n">rhs</span><span class="o">.</span><span class="n">num_realizations</span><span class="p">,</span><span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+
+
+	<span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">rhs</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Overload of the multiplication operator: a multiplication of two ensembles is another ensemble whose data are hstacked. This operation is useful if you have two ensembles with the same realizations but different statistical descriptor, and you want to create an ensemble in which both descriptors are included. The data must be hstackable</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c">#Safety checks</span>
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span><span class="n">Ensemble</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">.</span><span class="n">metric</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">.</span><span class="n">num_realizations</span>
+
+		<span class="c">#Throw an error if the file lists do not coincide</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_list</span> <span class="o">==</span> <span class="n">rhs</span><span class="o">.</span><span class="n">file_list</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;You are try to multiply ensembles built from different files!!&quot;</span><span class="p">)</span>
+
+		<span class="k">try</span><span class="p">:</span>
+
+			<span class="n">new_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span><span class="n">rhs</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+
+		<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;The data of these two ensembles cannot be hstacked!&quot;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="bp">None</span>
+
+		<span class="k">return</span> <span class="n">Ensemble</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="n">new_data</span><span class="p">,</span><span class="n">num_realizations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span><span class="p">,</span><span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Ensemble.split"><a class="viewcode-back" href="../../code.html#lenstools.statistics.Ensemble.split">[docs]</a>	<span class="k">def</span> <span class="nf">split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">index</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Inverse of the * operator: this method uses an Indexer instance to break down a multiple descriptor ensemble in many, smaller, single descriptor ensembles</span>
+
+<span class="sd">		:param index: index of descriptors with which to perform the split</span>
+<span class="sd">		:type index: Indexer instance</span>
+
+<span class="sd">		:returns: list of Ensemble instances, one for each element in index</span>
+
+<span class="sd">		:raises: AssertionError if shape of the ensemble data is not suitable </span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span><span class="n">Indexer</span><span class="p">)</span>
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span>  <span class="n">index</span><span class="o">.</span><span class="n">size</span>
+
+		<span class="n">splitted</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+		
+		<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">num_descriptors</span><span class="p">):</span>
+
+			<span class="n">splitted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ensemble</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_list</span><span class="p">,</span><span class="n">num_realizations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_realizations</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span><span class="n">index</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">first</span><span class="p">:</span><span class="n">index</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">.</span><span class="n">last</span><span class="p">],</span><span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">))</span>
+
+		<span class="k">return</span> <span class="n">splitted</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" >lenstools</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Andrea Petri.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

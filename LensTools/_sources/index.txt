@@ -1,0 +1,70 @@
+.. LensTools documentation master file, created by
+   sphinx-quickstart on Sun Jun 29 15:31:39 2014.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to LensTools's documentation!
+=====================================
+
+This python package collects together a suite of widely used analysis tools in Weak Gravitational Lensing
+
+.. warning::
+
+	This is still in pre-alpha stage, not tested yet on full scale! Use at your own risk!
+
+Summary
+-------
+
+This python add-on will handle basically every operation you will need to perform on Weak Lensing survey data; the distribution includes a range of tools in image analysis, statistical processing and numerical theory predictions and supports multiprocessing using the mpi4py module. 
+
+Installation
+------------
+
+The easiest way will be to install through pip::
+
+	pip install LensTools
+
+In the meantime you can clone or fork fork the `github repository <https://github.com/apetri/LensTools>`_ to download the source
+
+Test
+----
+
+To check that everything works you can run some pre implemented tests. First you need to install `pytest <http://pytest.org/latest/>`_, then you need to go into the Test directory and run::
+	
+	py.test
+
+The tests will need some data files to run: coming soon...
+
+Issues
+------
+
+The code is maintained and developed on `github <https://github.com/apetri/LensTools>`_, pull requests are welcome!
+
+License
+-------
+
+None so far
+
+API
+---
+
+.. toctree::
+   :maxdepth: 2
+
+   code
+
+Gallery
+-------
+
+.. toctree::
+   :maxdepth: 2
+
+   gallery
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

@@ -1,0 +1,258 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lenstools.noise &mdash; LensTools 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="LensTools 0.2 documentation" href="../../index.html" />
+    <link rel="up" title="lenstools" href="../lenstools.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" accesskey="U">lenstools</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lenstools.noise</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">.. module:: noise</span>
+<span class="sd">	:platform: Unix</span>
+<span class="sd">	:synopsis: This module implements various tools to generate simulated noise maps</span>
+
+
+<span class="sd">.. moduleauthor:: Andrea Petri &lt;apetri@phys.columbia.edu&gt;</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+
+<span class="kn">from</span> <span class="nn">topology</span> <span class="kn">import</span> <span class="n">ConvergenceMap</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c">#Check if rfftfreq is implemented (requires numpy&gt;=1.8)</span>
+<span class="k">try</span><span class="p">:</span>
+	<span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span>
+<span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+	<span class="kn">from</span> <span class="nn">rfftfreq</span> <span class="kn">import</span> <span class="n">rfftfreq</span>
+	<span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span> <span class="o">=</span> <span class="n">rfftfreq</span>
+
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">interpolate</span>
+
+<span class="c">########################################################</span>
+<span class="c">########GaussianNoiseGenerator class####################</span>
+<span class="c">########################################################</span>
+
+<div class="viewcode-block" id="GaussianNoiseGenerator"><a class="viewcode-back" href="../../code.html#lenstools.noise.GaussianNoiseGenerator">[docs]</a><span class="k">class</span> <span class="nc">GaussianNoiseGenerator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A class that handles generation of Gaussian simulated noise maps</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">shape</span><span class="p">,</span><span class="n">side_angle</span><span class="p">,</span><span class="n">label</span><span class="p">):</span>
+		
+		<span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">side_angle</span> <span class="o">=</span> <span class="n">side_angle</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+
+	<span class="nd">@classmethod</span>
+<div class="viewcode-block" id="GaussianNoiseGenerator.forMap"><a class="viewcode-back" href="../../code.html#lenstools.noise.GaussianNoiseGenerator.forMap">[docs]</a>	<span class="k">def</span> <span class="nf">forMap</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">conv_map</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		This class method generates a Gaussian noise generator intended to be used on a convergence map: i.e. the outputs of its methods can be added to the convergence map in question to simulate the presence of noise</span>
+
+<span class="sd">		:param conv_map: The blueprint of the convergence map you want to generate the noise for</span>
+<span class="sd">		:type conv_map: ConvergenceMap instance</span>
+
+<span class="sd">		:raises: AssertionError if conv_map is not a ConvergenceMap instance</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conv_map</span><span class="p">,</span><span class="n">ConvergenceMap</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">conv_map</span><span class="o">.</span><span class="n">kappa</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="n">conv_map</span><span class="o">.</span><span class="n">side_angle</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s">&quot;convergence&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="GaussianNoiseGenerator.getShapeNoise"><a class="viewcode-back" href="../../code.html#lenstools.noise.GaussianNoiseGenerator.getShapeNoise">[docs]</a>	<span class="k">def</span> <span class="nf">getShapeNoise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">z</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span><span class="n">ngal</span><span class="o">=</span><span class="mf">15.0</span><span class="p">,</span><span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		This method generates a white, gaussian shape noise map for the given redshift of the map</span>
+
+<span class="sd">		:param z: single redshift of the backround sources on the map</span>
+<span class="sd">		:type z: float.</span>
+
+<span class="sd">		:param ngal: assumed number of galaxies per square arcminute</span>
+<span class="sd">		:type ngal: float.</span>
+
+<span class="sd">		:param seed: seed of the random generator</span>
+<span class="sd">		:type seed: int.</span>
+
+<span class="sd">		:returns: ConvergenceMap instance of the same exact shape as the one used as blueprint</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="ow">is</span> <span class="s">&quot;convergence&quot;</span><span class="p">:</span>
+		
+			<span class="c">#Compute shape noise amplitude</span>
+			<span class="n">pixel_side_arcmin</span> <span class="o">=</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">side_angle</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.15</span> <span class="o">+</span> <span class="mf">0.035</span><span class="o">*</span><span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">pixel_side_arcmin</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ngal</span><span class="p">))</span>
+
+			<span class="c">#Generate shape noise</span>
+			<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+			<span class="n">noise_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span><span class="n">scale</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> 
+
+			<span class="c">#Build the ConvergenceMap object</span>
+			<span class="k">return</span> <span class="n">ConvergenceMap</span><span class="p">(</span><span class="n">noise_map</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">side_angle</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Only convergence implemented so far!!!&quot;</span><span class="p">)</span>
+</div>
+	<span class="k">def</span> <span class="nf">_fourierMap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">power_func</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+		<span class="c">#Assert the shape of the blueprint, to tune the right size for the fourier transform</span>
+		<span class="n">lpix</span> <span class="o">=</span> <span class="mf">360.0</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">side_angle</span>
+		<span class="n">lx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">lpix</span>
+		<span class="n">ly</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftfreq</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">lpix</span>
+
+		<span class="c">#Compute the multipole moment of each FFT pixel</span>
+		<span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">lx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ly</span><span class="p">[:,</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+		<span class="c">#Compute the power spectrum at each l and check that it is positive </span>
+		<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">power_func</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+			
+			<span class="c">#Check for correct shape</span>
+			<span class="k">assert</span> <span class="n">power_func</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span><span class="s">&quot;If you want an interpolated power spectrum you should pass a (l,Pl) array!&quot;</span>
+
+			<span class="c">#Perform the interpolation</span>
+			<span class="n">ell</span><span class="p">,</span><span class="n">Pell</span> <span class="o">=</span> <span class="n">power_func</span>
+			<span class="n">power_interp</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">ell</span><span class="p">,</span><span class="n">Pell</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+			<span class="n">Pl</span> <span class="o">=</span> <span class="n">power_interp</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			
+			<span class="n">Pl</span> <span class="o">=</span> <span class="n">power_func</span><span class="p">(</span><span class="n">l</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+		
+
+		<span class="k">assert</span> <span class="n">Pl</span><span class="p">[</span><span class="n">Pl</span><span class="o">&gt;=</span><span class="mf">0.0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">Pl</span><span class="o">.</span><span class="n">size</span>
+
+		<span class="c">#Generate amplitudes and phases</span>
+		<span class="n">amplitudes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Pl</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span><span class="n">scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">l</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">lpix</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+		<span class="n">phases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span><span class="n">high</span><span class="o">=</span><span class="mf">2.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">l</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+		<span class="c">#Get map in real space and return</span>
+		<span class="n">ft_map</span> <span class="o">=</span> <span class="n">amplitudes</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0j</span><span class="o">*</span><span class="n">phases</span><span class="p">)</span> <span class="o">*</span> <span class="n">l</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>
+		<span class="n">ft_map</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+		<span class="k">return</span> <span class="n">ft_map</span>
+
+
+
+<div class="viewcode-block" id="GaussianNoiseGenerator.fromConvPower"><a class="viewcode-back" href="../../code.html#lenstools.noise.GaussianNoiseGenerator.fromConvPower">[docs]</a>	<span class="k">def</span> <span class="nf">fromConvPower</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">power_func</span><span class="p">,</span><span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		This method uses a supplied power spectrum to generate correlated noise maps in real space via FFTs</span>
+
+<span class="sd">		:param power_func: function that given a numpy array of l&#39;s returns a numpy array with the according Pl&#39;s (this is the input power spectrum); alternatively you can pass an array (l,Pl) and the power spectrum will be calculated with scipy&#39;s interpolation routines</span>
+<span class="sd">		:type power_func: function with the above specifications, or numpy array (l,Pl) of shape (2,n) </span>
+
+<span class="sd">		:param seed: seed of the random generator </span>
+<span class="sd">		:type seed: int.</span>
+
+<span class="sd">		:param kwargs: keyword arguments to be passed to power_func, or to the interpolate.interp1d routine</span>
+
+<span class="sd">		:returns: ConvergenceMap instance of the same exact shape as the one used as blueprint</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="ow">is</span> <span class="s">&quot;convergence&quot;</span>
+
+		<span class="c">#Initialize random number generator</span>
+		<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+		<span class="c">#Generate a random Fourier realization and invert it</span>
+		<span class="n">ft_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fourierMap</span><span class="p">(</span><span class="n">power_func</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+		<span class="n">noise_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfft2</span><span class="p">(</span><span class="n">ft_map</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">ConvergenceMap</span><span class="p">(</span><span class="n">noise_map</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">side_angle</span><span class="p">)</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" >lenstools</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Andrea Petri.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lenstools.index &mdash; LensTools 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="LensTools 0.2 documentation" href="../../index.html" />
+    <link rel="up" title="lenstools" href="../lenstools.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" accesskey="U">lenstools</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lenstools.index</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">.. module:: index </span>
+<span class="sd">	:platform: Unix</span>
+<span class="sd">	:synopsis: This module implements a set of useful indexing operations useful for analyses with multiple statistical descriptors</span>
+
+
+<span class="sd">.. moduleauthor:: Andrea Petri &lt;apetri@phys.columbia.edu&gt;</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractproperty</span>
+
+<span class="c">#######################################################</span>
+<span class="c">######Individual descriptor classes####################</span>
+<span class="c">#######################################################</span>
+
+<span class="k">class</span> <span class="nc">Descriptor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_first</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="mi">0</span>
+
+	<span class="nd">@abstractproperty</span>
+	<span class="k">def</span> <span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+	<span class="nd">@abstractproperty</span>
+	<span class="k">def</span> <span class="nf">last</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+<div class="viewcode-block" id="PowerSpectrum"><a class="viewcode-back" href="../../code.html#lenstools.index.PowerSpectrum">[docs]</a><span class="k">class</span> <span class="nc">PowerSpectrum</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Power spectrum indexing class</span>
+
+<span class="sd">	:param l_edges: bin edges of multipole moments</span>
+<span class="sd">	:type l_edges: array</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">l_edges</span><span class="p">):</span>
+		
+		<span class="nb">super</span><span class="p">(</span><span class="n">PowerSpectrum</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">l_edges</span> <span class="o">=</span> <span class="n">l_edges</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">l_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">l_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+
+	<span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="k">return</span> <span class="s">&quot;Power Spectrum descriptor: {0} bins</span><span class="se">\n</span><span class="s">Edges: {1}</span><span class="se">\n</span><span class="s">Midpoints{2}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="p">),</span><span class="bp">self</span><span class="o">.</span><span class="n">l_edges</span><span class="o">.</span><span class="n">__str__</span><span class="p">(),</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="n">__str__</span><span class="p">())</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">last</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span>
+</div>
+<div class="viewcode-block" id="Peaks"><a class="viewcode-back" href="../../code.html#lenstools.index.Peaks">[docs]</a><span class="k">class</span> <span class="nc">Peaks</span><span class="p">(</span><span class="n">Descriptor</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Peaks histogram indexing class</span>
+
+<span class="sd">	:param thresholds: peak histogram bin edges</span>
+<span class="sd">	:type thresholds: array</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">thresholds</span><span class="p">):</span>
+
+		<span class="nb">super</span><span class="p">(</span><span class="n">Peaks</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span> <span class="o">=</span> <span class="n">thresholds</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">thresholds</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">thresholds</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+
+	<span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="k">return</span> <span class="s">&quot;Peak count descriptor: {0} bins</span><span class="se">\n</span><span class="s">Edges: {1}</span><span class="se">\n</span><span class="s">Midpoints{2}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="p">),</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="o">.</span><span class="n">__str__</span><span class="p">(),</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="o">.</span><span class="n">__str__</span><span class="p">())</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">last</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span>
+</div>
+<div class="viewcode-block" id="MinkowskiSingle"><a class="viewcode-back" href="../../code.html#lenstools.index.MinkowskiSingle">[docs]</a><span class="k">class</span> <span class="nc">MinkowskiSingle</span><span class="p">(</span><span class="n">Peaks</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Single Minkowski functional indexing class, identical to Peaks</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+</div>
+<div class="viewcode-block" id="MinkowskiAll"><a class="viewcode-back" href="../../code.html#lenstools.index.MinkowskiAll">[docs]</a><span class="k">class</span> <span class="nc">MinkowskiAll</span><span class="p">(</span><span class="n">Peaks</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Minkowski functionals indexing class, inherits from Peaks; the add-ons are some methods that deal with the fact that there are 3 Minkowski functionals</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">last</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">+</span> <span class="mi">3</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span>
+
+	<span class="k">def</span> <span class="nf">separate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Separates an MinkowskiAll index into 3 separate MinkowsiSingle indices, one for each Minkowski functional</span>
+
+<span class="sd">		:returns: list of three MinkowskiSingle instances</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="n">mink0</span> <span class="o">=</span> <span class="n">MinkowskiSingle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">)</span>
+		<span class="n">mink0</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span>
+
+		<span class="n">mink1</span> <span class="o">=</span> <span class="n">MinkowskiSingle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">)</span>
+		<span class="n">mink1</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="p">)</span>
+
+		<span class="n">mink2</span> <span class="o">=</span> <span class="n">MinkowskiSingle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">)</span>
+		<span class="n">mink2</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">midpoints</span><span class="p">)</span> 
+
+		<span class="k">return</span> <span class="p">[</span><span class="n">mink0</span><span class="p">,</span><span class="n">mink1</span><span class="p">,</span><span class="n">mink2</span><span class="p">]</span>
+
+<span class="c">###################################</span>
+<span class="c">#####Global indexer################</span>
+<span class="c">###################################</span>
+</div>
+<div class="viewcode-block" id="Indexer"><a class="viewcode-back" href="../../code.html#lenstools.index.Indexer">[docs]</a><span class="k">class</span> <span class="nc">Indexer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	This class is useful for indexing an array of statistical descriptors that are hstacked together; the Indexer instance keeps track of the memory regions where the different descriptors are stored</span>
+
+<span class="sd">	:param descriptor_list: list of Descriptor subinstances, such as PowerSpectrum; each of these sub instances must be a subclass of Descriptor with a &#39;first&#39; and &#39;last&#39; getter methods implemented</span>
+<span class="sd">	:type descriptor_list: list.</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">descriptor_list</span><span class="p">):</span>
+
+		<span class="c">#Initialize index with descriptor list</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">descriptor_list</span> <span class="o">=</span> <span class="n">descriptor_list</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">num_descriptors</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">descriptor_list</span><span class="p">)</span>
+
+	<span class="nd">@classmethod</span>
+	<span class="k">def</span> <span class="nf">stack</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">descriptor_list</span><span class="p">):</span>
+
+		<span class="n">_last</span> <span class="o">=</span> <span class="mi">0</span>
+
+		<span class="c">#Create an index of all the descriptor bounds by stacking the observables vectors</span>
+		<span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptor_list</span><span class="p">:</span>
+
+			<span class="n">increment</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">last</span> <span class="o">-</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">_start</span>
+			<span class="n">descriptor</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="n">_last</span>
+			<span class="n">_last</span> <span class="o">+=</span> <span class="n">increment</span>
+
+		<span class="n">new_idx</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">descriptor_list</span><span class="p">)</span>
+		<span class="nb">setattr</span><span class="p">(</span><span class="n">new_idx</span><span class="p">,</span><span class="s">&quot;_last&quot;</span><span class="p">,</span><span class="n">_last</span><span class="p">)</span>
+
+		<span class="k">return</span> <span class="n">new_idx</span>
+
+	<span class="nd">@property</span>
+	<span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+		<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&quot;_last&quot;</span><span class="p">):</span>
+			<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span>
+		<span class="k">else</span><span class="p">:</span> 
+			<span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s">&quot;This index has not been created by stack() method, cannot determine size!&quot;</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Allows to access the n-th descriptor by indexing&quot;&quot;&quot;</span>
+
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">descriptor_list</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+			
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" >lenstools</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Andrea Petri.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lenstools.limber &mdash; LensTools 0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="LensTools 0.2 documentation" href="../../index.html" />
+    <link rel="up" title="lenstools" href="../lenstools.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" accesskey="U">lenstools</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lenstools.limber</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">.. module:: limber </span>
+<span class="sd">	:platform: Unix</span>
+<span class="sd">	:synopsis: This module implements the tools to compute the convergence power spectrum from the 3D matter power spectrum using the Limber approximation</span>
+
+
+<span class="sd">.. moduleauthor:: Andrea Petri &lt;apetri@phys.columbia.edu&gt;</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">StringIO</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">interpolate</span><span class="p">,</span><span class="n">integrate</span>
+
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">cosmology</span>
+<span class="kn">from</span> <span class="nn">astropy.constants</span> <span class="kn">import</span> <span class="n">c</span>
+
+<span class="c">##################################################</span>
+<span class="c">#############Limber Integrator class##############</span>
+<span class="c">##################################################</span>
+
+<div class="viewcode-block" id="LimberIntegrator"><a class="viewcode-back" href="../../code.html#lenstools.limber.LimberIntegrator">[docs]</a><span class="k">class</span> <span class="nc">LimberIntegrator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A 3D power spectrum integrator that will compute the convergence power spectrum  using the Limber approximation. The units for quantities with dimensions of length are assumed to be Mpc</span>
+
+<span class="sd">	</span>
+<span class="sd">	:param lValues: Desired multipole values for the convergence power spectrum</span>
+
+<span class="sd">	:type lValues: array</span>
+
+<span class="sd">	:param cosmoModel: One of astropy.cosmology objects (WMAP9 cosmology is set by default)</span>
+
+<span class="sd">	:type cosmoModel: astropy.cosmology </span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lValues</span><span class="p">,</span><span class="n">cosmoModel</span><span class="o">=</span><span class="n">cosmology</span><span class="o">.</span><span class="n">WMAP9</span><span class="p">):</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">lValues</span> <span class="o">=</span> <span class="n">lValues</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span> <span class="o">=</span> <span class="n">cosmoModel</span>
+
+<div class="viewcode-block" id="LimberIntegrator.computeConvergence"><a class="viewcode-back" href="../../code.html#lenstools.limber.LimberIntegrator.computeConvergence">[docs]</a>	<span class="k">def</span> <span class="nf">computeConvergence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">matterPower</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">powFileRoot</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">extension</span><span class="o">=</span><span class="s">&quot;.dat&quot;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Computes the convergence power spectrum with the Limber integral of the 3D matter power spectrum;</span>
+<span class="sd">		this still assumes a single source redshift at z0 = max(z) </span>
+
+<span class="sd">		</span>
+<span class="sd">		:param z:</span>
+<span class="sd">			redshift bins at which the matter power spectrum is calculated; the z array must be sorted in ascending order</span>
+<span class="sd">			and z[0] must be &gt;0 even if small, otherwise this throws an exception</span>
+
+<span class="sd">		:type z: array</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param matterPower:</span>
+<span class="sd">			values of the matter power spectrum at corresponding z (first column must be k, the rest P(k,z), one for each z)</span>
+
+<span class="sd">		:type matterPower: ndarray</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param powFileRoot:</span>
+<span class="sd">			common root name of files in which the 3d power spectrum is stored; if None it is assumed that all the</span>
+<span class="sd">			information is already loaded in the matterPower array. Throws and exception if both are None</span>
+
+<span class="sd">		:type powFileRoot: str.</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param extension:</span>
+<span class="sd">			extension of text files with 3d power spectrum, default is .dat</span>
+
+<span class="sd">		:type extension: str.</span>
+
+<span class="sd">		:returns: array -- the convergence power spectrum at the l Values specified in the constructor</span>
+
+<span class="sd">		:raises: ValueError</span>
+<span class="sd">		</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c">#Check validity of redshift values</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&lt;=</span><span class="mf">0.0</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;first redshift must be &gt;0!!&quot;</span><span class="p">)</span>
+
+		<span class="c">#Check validity of imput arguments</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">matterPower</span><span class="o">==</span><span class="bp">None</span> <span class="ow">and</span> <span class="n">powFileRoot</span><span class="o">==</span><span class="bp">None</span><span class="p">):</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;matterPower and powFileRoot cannot be both None!!&quot;</span><span class="p">)</span>
+
+		<span class="c">#Power spectrum normalization</span>
+		<span class="n">normalization</span> <span class="o">=</span> <span class="p">(</span><span class="mf">9.0</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">Om0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">H0</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">c</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s">&quot;km/s&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">**</span><span class="mi">4</span>
+
+		<span class="c">#l bins and convergence power spectrum</span>
+		<span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lValues</span>
+
+		<span class="c">#Compute comoving distances and integral kernel</span>
+		<span class="n">chi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">comoving_distance</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+		<span class="n">chi0</span> <span class="o">=</span> <span class="n">chi</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">chi</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">kernel</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">chi</span><span class="o">/</span><span class="n">chi0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+
+		<span class="c">#Load information about kappa (wavenumber) and P(kappa) (matter power spectrum)</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">powFileRoot</span><span class="o">!=</span><span class="bp">None</span><span class="p">):</span>
+
+			<span class="c">#Load matter power spectra from camb output files#</span>
+			<span class="c">#See how many k&#39;s are stored</span>
+			<span class="n">kappa</span><span class="p">,</span><span class="n">try_power</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">powFileRoot</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span> <span class="o">+</span> <span class="n">extension</span><span class="p">))</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+
+			<span class="c">#Load power spectrum</span>
+			<span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">kappa</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)])</span>
+
+			<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)):</span>
+				<span class="n">try_power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">powFileRoot</span> <span class="o">+</span> <span class="p">(</span><span class="s">&#39;</span><span class="si">%d%s</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span><span class="n">extension</span><span class="p">))))</span>
+
+				<span class="c">#Normalize power spectrum correctly</span>
+				<span class="n">power_spectrum</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">try_power</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">h</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+
+			<span class="c">#Fill in values from the matterPower array</span>
+			<span class="n">kappa</span> <span class="o">=</span> <span class="n">matterPower</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">matterPower</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span>
+
+		<span class="c">#############################################################</span>
+		<span class="c">#Compute the integral for lensing convergence power spectrum#</span>
+		<span class="c">#############################################################</span>
+		
+		<span class="n">power_interpolation</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">h</span><span class="p">,</span><span class="n">power_spectrum</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">bounds_error</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+		<span class="n">power_integrand</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)))</span>
+		<span class="n">lchi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">l</span><span class="p">,</span><span class="mf">1.0</span><span class="o">/</span><span class="n">chi</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+
+		<span class="n">power_integrand</span> <span class="o">=</span> <span class="n">power_interpolation</span><span class="p">(</span><span class="n">lchi</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">axis1</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">axis2</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+		<span class="n">full_integrand</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">z</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,:])</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">power_integrand</span>
+	
+		<span class="c">#Finally compute the integral</span>
+		<span class="n">C</span> <span class="o">=</span> <span class="n">integrate</span><span class="o">.</span><span class="n">simps</span><span class="p">(</span><span class="n">full_integrand</span><span class="p">,</span><span class="n">chi</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">normalization</span>
+
+		<span class="c">#Return the final result</span>
+		<span class="k">return</span> <span class="n">C</span>
+</div>
+<div class="viewcode-block" id="LimberIntegrator.writeCAMBSettings"><a class="viewcode-back" href="../../code.html#lenstools.limber.LimberIntegrator.writeCAMBSettings">[docs]</a>	<span class="k">def</span> <span class="nf">writeCAMBSettings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">powFileRoot</span><span class="o">=</span><span class="s">&quot;matterpower&quot;</span><span class="p">,</span><span class="n">transfer_high_precision</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">transfer_k_per_logint</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">transfer_interp_matterpower</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		</span>
+<span class="sd">		Outputs a StringIO object that will contain the redshift settings of the CAMB parameter file that will needed</span>
+<span class="sd">		in order for CAMB to produce the linear or non linear matter power spectra that will then be integrated by </span>
+<span class="sd">		the computeConvergence() method</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param z:</span>
+<span class="sd">			redshift bins at which the matter power spectrum is calculated (assumed to be a monotonic array with more than 1 element)</span>
+
+<span class="sd">		:type z: array</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param powFileRoot:</span>
+<span class="sd">			root of the filename that you want to give to the CAMB power spectrum outputs</span>
+
+<span class="sd">		:type powFileRoot: str.</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param transfer_high_precision:</span>
+<span class="sd">			read CAMB documentation (this sets the precision of the calculated transfer function)</span>
+
+<span class="sd">		:type transfer_high_precision: bool.</span>
+
+<span class="sd">		</span>
+<span class="sd">		:param transfer_k_per_logint:</span>
+<span class="sd">			read CAMB documentation (this sets the k wavenumber binning)</span>
+
+<span class="sd">		:type transfer_k_per_logint: int.</span>
+<span class="sd">		</span>
+<span class="sd">		:param transfer_interp_matterpower:</span>
+<span class="sd">			read CAMB documentation (this sets how the matter power is interpolated between different k&#39;s)</span>
+
+<span class="sd">		:type transfer_interp_matterpower: bool.</span>
+
+<span class="sd">		:returns: str -- the portion of the CAMB parameter file relevant to the 3D matter power spectrum</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="n">S</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+
+		<span class="k">if</span><span class="p">(</span><span class="n">transfer_high_precision</span><span class="p">):</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_high_precision = T</span><span class="se">\n</span><span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_high_precision = F</span><span class="se">\n</span><span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+
+		<span class="c">#Compute maximum k that needs to be calculated (tune manually in the parameter file if this is too high)</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mf">0.0</span><span class="p">):</span>
+			<span class="n">kmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lValues</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">comoving_distance</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">value</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">kmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lValues</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmoModel</span><span class="o">.</span><span class="n">comoving_distance</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">value</span>
+
+		<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_kmax = </span><span class="si">%.3f</span><span class="s"></span>
+<span class="s">transfer_k_per_logint = </span><span class="si">%d</span><span class="s"></span>
+<span class="s">transfer_num_redshifts  = </span><span class="si">%d</span><span class="s"></span>
+
+<span class="s">&quot;&quot;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">kmax</span><span class="p">,</span><span class="n">transfer_k_per_logint</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)))</span>
+
+		<span class="c">#Other settings</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">transfer_interp_matterpower</span><span class="p">):</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_interp_matterpower = T</span><span class="se">\n\n</span><span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_interp_matterpower = F</span><span class="se">\n\n</span><span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+
+		<span class="c">#Write desired output redshifts</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)):</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_redshift(</span><span class="si">%d</span><span class="s">) = </span><span class="si">%.3f</span><span class="se">\n</span><span class="s">&quot;&quot;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_filename(</span><span class="si">%d</span><span class="s">) = transfer_out_</span><span class="si">%d</span><span class="s">.dat</span><span class="se">\n</span><span class="s">&quot;&quot;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="p">)))</span>
+
+		<span class="c">#Write desired output filenames</span>
+		<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;</span><span class="se">\n</span><span class="s">#Matter power spectrum output against k/h in units of h^{-3} Mpc^3</span><span class="se">\n\n</span><span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)):</span>
+			<span class="n">S</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;&quot;&quot;transfer_matterpower(</span><span class="si">%d</span><span class="s">) = </span><span class="si">%s%d</span><span class="s">.dat</span><span class="se">\n</span><span class="s">&quot;&quot;&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">powFileRoot</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span><span class="p">)))</span>
+
+		<span class="c">#Return the StringIO object</span>
+		<span class="n">S</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">S</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">LensTools 0.2 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../lenstools.html" >lenstools</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Andrea Petri.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
