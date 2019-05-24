@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+	
+	<meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+	
+	<style>
+		body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}
+	</style>
+
+	<title>Happy Anniversary</title>
+	
+	
+</head>
+
+<body class="w3-light-grey w3-center w3-padding-32">
+
+	<h1>Happy Anniversary my Love</h1>
+
+	<div>
+		<img src="data/491_small.jpg" height="300"></img>
+	</div>
+
+	<div>
+		My sweet Mary, Happy (in advance) Anniversary!!!!<br>
+		To show that you are my favourite and I love you so much, I took the freedom to kind of modify our plans tonight. You're gonna have to cancel th the reservation at Hortus, cause we are going somewhere else. But where? Eh, eh, it's not that simple, you're gonna have to figure it out :) The way you do that, is by imputing some keywords in the box below. Each correct keyword input will display a clue to a location you must go to, to find... the next clue! The last clue will be the place where you are going to meet me! The hunt should end at 7:30pm, but the first clue won't appear until 4:30pm, so you should have enough time :) <br><br>
+
+		The first keyword you should input is: the last name of the singer of our wedding song <br><br>
+
+		Good luck and see you in the secret place! 
+	</div>
+
+	<div>
+		<textarea id="input"></textarea>
+		<button onclick="show()">Show me!</button>
+		
+
+		<div id="clue" style="font-weight: bold; color:red">
+		</div>
+	</div>
+
+	
+
+	<script>
+		function show(){
+
+			var now = new Date();
+			var inpt = document.getElementById("input").value.toLowerCase();
+			var outpt = document.getElementById("clue");
+
+			var clue;
+
+			if((now.getHours()>=16)&(now.getMinutes()>=30)){
+
+				if(inpt=="morrison"){
+					clue = "First clue: go to Malt & Mold Gramercy. Tell them I send you.";
+				} else if(inpt=="ernie"){
+					clue = "Second clue: Make your way to Le Du's wine shop and ask for your next clue!";
+				} else if(inpt=="inosan"){
+					clue = "Congratulations!!! The final destination for pre-dinner is: Lemon's the brand new rooftop bar at the Wythe Hotel in Brooklyn (take an Uber or head to the L stop near Le Du's. See you there at 7.30 my love)";
+				} else{
+					clue = "Wrong!!";
+				}
+
+			} else{
+				clue = "Hey! I told you wait until 4:30pm!";
+			}
+
+			outpt.textContent = clue;
+			
+		}
+	</script>
+
+
+</body>
+</html>
